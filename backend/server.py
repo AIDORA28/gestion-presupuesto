@@ -712,14 +712,18 @@ async def download_reporte(reporte_id: str, current_user: User = Depends(get_cur
     )
 
 
-# Health check route
+# Include the router in the main app
+app.include_router(api_router)
+
+# Health check route for Railway (outside of /api prefix)
+@app.get("/")
+async def health_check():
+    return {"status": "OK", "message": "API de Finanzas Personales funcionando correctamente"}
+
+# Health check route (with /api prefix)
 @api_router.get("/")
 async def root():
     return {"message": "API de Finanzas Personales funcionando correctamente"}
-
-
-# Include the router in the main app
-app.include_router(api_router)
 
 app.add_middleware(
     CORSMiddleware,
