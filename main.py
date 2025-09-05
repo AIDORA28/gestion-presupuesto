@@ -20,6 +20,10 @@ if not os.environ.get('DB_NAME'):
 
 logger.info(f"Starting server with PORT: {os.environ.get('PORT', 8000)}")
 logger.info(f"MONGO_URL present: {'MONGO_URL' in os.environ}")
+if os.environ.get('MONGO_URL'):
+    logger.info(f"MONGO_URL value: {os.environ.get('MONGO_URL')[:30]}...")
+else:
+    logger.info("MONGO_URL is None or empty")
 logger.info("MongoDB connection check completed")
 
 try:

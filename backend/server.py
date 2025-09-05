@@ -25,10 +25,14 @@ load_dotenv(ROOT_DIR / '.env')
 # MongoDB connection
 mongo_url = os.environ.get('MONGO_URL')
 
+print(f"🔍 Checking MONGO_URL environment variable...")
+print(f"🔍 MONGO_URL exists: {'MONGO_URL' in os.environ}")
+print(f"🔍 MONGO_URL value: {mongo_url[:30] if mongo_url else 'None'}...")
+
 if mongo_url:
     client = AsyncIOMotorClient(mongo_url)
     db = client[os.environ.get('DB_NAME', 'gestion_db')]
-    print(f"✅ MongoDB connected: {mongo_url[:20]}...")
+    print(f"✅ MongoDB connected: {mongo_url[:30]}...")
 else:
     client = None
     db = None
