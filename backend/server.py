@@ -744,48 +744,59 @@ async def health_check():
 @app.get("/debug/db")
 async def debug_database():
     if db is None:
-        return {"error": "Database not connected"}
+        return {"error": "Database not connected", "mongo_url_configured": "MONGO_URL" in os.environ}
     
     try:
-        # Get all collections
-        collections = await db.list_collection_names()
+        # Simple ping test first
+        await db.admin.command('ping')
+        
+        # Get database stats
+        stats = await db.command("dbStats")
+        
+        # Try to get collections with error handling
+        try:
+            collections = await db.list_collection_names()
+        except Exception as e:
+            return {
+                "error": f"Could not list collections: {str(e)}",
+                "db_ping": "success",
+                "db_stats": {
+                    "db_name": stats.get("db", "unknown"),
+                    "collections": stats.get("collections", 0),
+                    "objects": stats.get("objects", 0)
+                }
+            }
         
         result = {
             "database_name": db.name,
-            "collections": {},
-            "total_collections": len(collections)
+            "db_ping": "success",
+            "total_collections": len(collections),
+            "collections": collections,
+            "db_stats": {
+                "objects_count": stats.get("objects", 0),
+                "storage_size": stats.get("storageSize", 0),
+                "indexes": stats.get("indexes", 0)
+            }
         }
         
-        # Count documents in each collection
-        for collection_name in collections:
-            try:
-                count = await db[collection_name].count_documents({})
-                result["collections"][collection_name] = {
-                    "count": count,
-                    "sample": []
-                }
-                
-                # Get a few sample documents
-                if count > 0:
-                    cursor = db[collection_name].find({}).limit(3)
-                    samples = []
-                    async for doc in cursor:
-                        # Convert ObjectId to string for JSON serialization
-                        if "_id" in doc:
-                            doc["_id"] = str(doc["_id"])
-                        # Hide password field if exists
-                        if "password" in doc:
-                            doc["password"] = "***HIDDEN***"
-                        samples.append(doc)
-                    result["collections"][collection_name]["sample"] = samples
-                    
-            except Exception as e:
-                result["collections"][collection_name] = {"error": str(e)}
+        # Try to count users specifically
+        try:
+            if "users" in collections:
+                users_count = await db.users.count_documents({})
+                result["users_count"] = users_count
+            else:
+                result["users_count"] = 0
+        except Exception as e:
+            result["users_count_error"] = str(e)
         
         return result
         
     except Exception as e:
-        return {"error": f"Database error: {str(e)}"}
+        return {
+            "error": f"Database connection failed: {str(e)}",
+            "mongo_url_present": "MONGO_URL" in os.environ,
+            "db_object": db is not None
+        }
 
 # Health check route (with /api prefix)
 @api_router.get("/")
