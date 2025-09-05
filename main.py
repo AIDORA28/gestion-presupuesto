@@ -20,6 +20,7 @@ if not os.environ.get('DB_NAME'):
 
 logger.info(f"Starting server with PORT: {os.environ.get('PORT', 8000)}")
 logger.info(f"MONGO_URL present: {'MONGO_URL' in os.environ}")
+logger.info("MongoDB connection check completed")
 
 try:
     from backend.server import app
