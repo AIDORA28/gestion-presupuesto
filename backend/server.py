@@ -23,10 +23,16 @@ ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
 
 # MongoDB connection
-mongo_url = os.environ['MONGO_URL']
+mongo_url = os.environ.get('MONGO_URL')
 
-client = AsyncIOMotorClient(mongo_url)
-db = client[os.environ['DB_NAME']]
+if mongo_url:
+    client = AsyncIOMotorClient(mongo_url)
+    db = client[os.environ.get('DB_NAME', 'gestion_db')]
+    print(f"✅ MongoDB connected: {mongo_url[:20]}...")
+else:
+    client = None
+    db = None
+    print("⚠️ MongoDB not connected - running in demo mode")
 
 # Create the main app without a prefix
 app = FastAPI()
@@ -718,7 +724,17 @@ app.include_router(api_router)
 # Health check route for Railway (outside of /api prefix)
 @app.get("/")
 async def health_check():
-    return {"status": "OK", "message": "API de Finanzas Personales funcionando correctamente"}
+    mongo_status = "connected" if db is not None else "not connected"
+    return {
+        "status": "OK", 
+        "message": "API de Finanzas Personales funcionando correctamente",
+        "mongodb": mongo_status,
+        "environment": {
+            "SECRET_KEY": "configured" if os.environ.get('SECRET_KEY') else "missing",
+            "DB_NAME": os.environ.get('DB_NAME', 'not set'),
+            "MONGO_URL": "configured" if os.environ.get('MONGO_URL') else "missing"
+        }
+    }
 
 # Health check route (with /api prefix)
 @api_router.get("/")
