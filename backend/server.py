@@ -740,6 +740,53 @@ async def health_check():
         }
     }
 
+# Debug endpoint to see database collections and counts
+@app.get("/debug/db")
+async def debug_database():
+    if db is None:
+        return {"error": "Database not connected"}
+    
+    try:
+        # Get all collections
+        collections = await db.list_collection_names()
+        
+        result = {
+            "database_name": db.name,
+            "collections": {},
+            "total_collections": len(collections)
+        }
+        
+        # Count documents in each collection
+        for collection_name in collections:
+            try:
+                count = await db[collection_name].count_documents({})
+                result["collections"][collection_name] = {
+                    "count": count,
+                    "sample": []
+                }
+                
+                # Get a few sample documents
+                if count > 0:
+                    cursor = db[collection_name].find({}).limit(3)
+                    samples = []
+                    async for doc in cursor:
+                        # Convert ObjectId to string for JSON serialization
+                        if "_id" in doc:
+                            doc["_id"] = str(doc["_id"])
+                        # Hide password field if exists
+                        if "password" in doc:
+                            doc["password"] = "***HIDDEN***"
+                        samples.append(doc)
+                    result["collections"][collection_name]["sample"] = samples
+                    
+            except Exception as e:
+                result["collections"][collection_name] = {"error": str(e)}
+        
+        return result
+        
+    except Exception as e:
+        return {"error": f"Database error: {str(e)}"}
+
 # Health check route (with /api prefix)
 @api_router.get("/")
 async def root():
